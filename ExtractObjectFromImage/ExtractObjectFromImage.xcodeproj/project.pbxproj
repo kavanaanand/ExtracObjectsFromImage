@@ -14,6 +14,7 @@
 		8E5ECE4E2A44FE340096502D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8E5ECE4D2A44FE340096502D /* Assets.xcassets */; };
 		8E5ECE512A44FE340096502D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8E5ECE4F2A44FE340096502D /* LaunchScreen.storyboard */; };
 		8E5ECE592A5C80A50096502D /* ObjectRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E5ECE582A5C80A50096502D /* ObjectRecognizer.swift */; };
+		8ED093022A5DE7830036E61A /* ObjectVisualLookup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED093012A5DE7830036E61A /* ObjectVisualLookup.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +27,7 @@
 		8E5ECE502A44FE340096502D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		8E5ECE522A44FE340096502D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8E5ECE582A5C80A50096502D /* ObjectRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectRecognizer.swift; sourceTree = "<group>"; };
+		8ED093012A5DE7830036E61A /* ObjectVisualLookup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectVisualLookup.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,6 +64,7 @@
 				8E5ECE462A44FE330096502D /* SceneDelegate.swift */,
 				8E5ECE482A44FE330096502D /* ViewController.swift */,
 				8E5ECE582A5C80A50096502D /* ObjectRecognizer.swift */,
+				8ED093012A5DE7830036E61A /* ObjectVisualLookup.swift */,
 				8E5ECE4A2A44FE330096502D /* Main.storyboard */,
 				8E5ECE4D2A44FE340096502D /* Assets.xcassets */,
 				8E5ECE4F2A44FE340096502D /* LaunchScreen.storyboard */,
@@ -144,6 +147,7 @@
 				8E5ECE592A5C80A50096502D /* ObjectRecognizer.swift in Sources */,
 				8E5ECE492A44FE330096502D /* ViewController.swift in Sources */,
 				8E5ECE452A44FE330096502D /* AppDelegate.swift in Sources */,
+				8ED093022A5DE7830036E61A /* ObjectVisualLookup.swift in Sources */,
 				8E5ECE472A44FE330096502D /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

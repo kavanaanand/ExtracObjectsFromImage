@@ -11,8 +11,10 @@ import PhotosUI
 class ViewController: UIViewController {
     private let imageView = UIImageView()
     private let objectRecognizer = ObjectRecognizer()
+    private let objectVisualLookup = ObjectVisualLookup()
     private let photosButton = UIButton()
-    private let recognizeButton = UIButton()
+    private let maskButton = UIButton()
+    private let visualLookup = UIButton()
     private let images = ["cow", "elephant", "people", "coffee", "street", "wineglasses"];
 }
 
@@ -21,38 +23,50 @@ extension ViewController {
         super.viewDidLoad()
         
         objectRecognizer.delegate = self
+        objectVisualLookup.delegate = self
         
         photosButton.setImage(UIImage(systemName: "photo"), for: .normal)
         photosButton.addTarget(self, action: #selector(photosButtonTapped), for: .touchUpInside)
         view.addSubview(photosButton)
         
-        recognizeButton.setTitle(" Recognize objects", for: .normal)
-        recognizeButton.setImage(UIImage(systemName: "info.circle"), for: .normal)
-        recognizeButton.setTitleColor(.systemBlue, for: .normal)
-        recognizeButton.addTarget(self, action: #selector(recognizeobjectsButtonTapped), for: .touchUpInside)
-        recognizeButton.isEnabled = false
-        view.addSubview(recognizeButton)
+        maskButton.setTitle("Mask", for: .normal)
+        maskButton.setImage(UIImage(systemName: "dot.square.fill"), for: .normal)
+        maskButton.setTitleColor(.systemBlue, for: .normal)
+        maskButton.addTarget(self, action: #selector(maskButtonTapped), for: .touchUpInside)
+        maskButton.isEnabled = false
+        view.addSubview(maskButton)
+        
+        visualLookup.setTitle("Lookup", for: .normal)
+        visualLookup.setImage(UIImage(systemName: "info.circle"), for: .normal)
+        visualLookup.setTitleColor(.systemBlue, for: .normal)
+        visualLookup.addTarget(self, action: #selector(visualLookupButtonTapped), for: .touchUpInside)
+        view.addSubview(visualLookup)
         
         imageView.backgroundColor = .orange
         imageView.isUserInteractionEnabled = true
         imageView.contentMode = UIView.ContentMode.scaleAspectFit
-        view.addSubview(imageView)
-        
+        imageView.addInteraction(objectVisualLookup.imageInteraction())
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(imageTapped(_:)))
         imageView.addGestureRecognizer(tapGesture)
+        view.addSubview(imageView)
+        
         
         photosButton.translatesAutoresizingMaskIntoConstraints = false
         imageView.translatesAutoresizingMaskIntoConstraints = false
-        recognizeButton.translatesAutoresizingMaskIntoConstraints = false
+        maskButton.translatesAutoresizingMaskIntoConstraints = false
+        visualLookup.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             photosButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
             photosButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 40),
             photosButton.heightAnchor.constraint(equalToConstant: 40),
             photosButton.widthAnchor.constraint(equalToConstant: 40),
-            recognizeButton.leadingAnchor.constraint(equalTo: photosButton.trailingAnchor, constant: 10),
-            recognizeButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
-            recognizeButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 40),
-            recognizeButton.heightAnchor.constraint(equalToConstant: 40),
+            maskButton.leadingAnchor.constraint(equalTo: photosButton.trailingAnchor, constant: 10),
+            maskButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 40),
+            maskButton.heightAnchor.constraint(equalToConstant: 40),
+            visualLookup.leadingAnchor.constraint(equalTo: maskButton.trailingAnchor, constant: 10),
+            visualLookup.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
+            visualLookup.topAnchor.constraint(equalTo: view.topAnchor, constant: 40),
+            visualLookup.heightAnchor.constraint(equalToConstant: 40),
             imageView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
             imageView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
             imageView.topAnchor.constraint(equalTo: view.topAnchor, constant: 100),
@@ -79,6 +93,12 @@ private extension ViewController {
         }
     }
     
+    private func lookupObjects() {
+        if let image = imageView.image {
+            objectVisualLookup.analyze(image)
+        }
+    }
+    
     @objc private func photosButtonTapped() {
         var configuration = PHPickerConfiguration(photoLibrary: .shared())
         configuration.filter = .images
@@ -87,10 +107,14 @@ private extension ViewController {
         present(picker, animated: true)
     }
     
-    @objc private func recognizeobjectsButtonTapped() {
+    @objc private func maskButtonTapped() {
         photosButton.isEnabled = false
-        recognizeButton.isEnabled = false
+        maskButton.isEnabled = false
         getObjects(at: nil)
+    }
+    
+    @objc private func visualLookupButtonTapped() {
+        lookupObjects()
     }
     
     @objc func imageTapped(_ sender: UITapGestureRecognizer) {
@@ -148,7 +172,7 @@ extension ViewController: PHPickerViewControllerDelegate {
                     DispatchQueue.main.async {
                         let object = image as! UIImage
                         self.imageView.image = object
-                        self.recognizeButton.isEnabled = true
+                        self.maskButton.isEnabled = true
                     }
                 }
             }
@@ -160,15 +184,18 @@ extension ViewController: ObjectRecognizerDelegate {
     func objectRecognizer(_ recognizer: ObjectRecognizer, didRecognizedAndMaskedObjects image: CGImage) {
         imageView.image = UIImage(cgImage: image)
         photosButton.isEnabled = true
-        recognizeButton.isEnabled = true
+        maskButton.isEnabled = true
     }
     
     func objectRecognizerDidFailRecognizingObjects(_ recognizer: ObjectRecognizer) {
         photosButton.isEnabled = true
-        recognizeButton.isEnabled = true
+        maskButton.isEnabled = true
     }
 }
 
+extension ViewController: ObjectVisualLookupDelegate {
+    
+}
 
 
 

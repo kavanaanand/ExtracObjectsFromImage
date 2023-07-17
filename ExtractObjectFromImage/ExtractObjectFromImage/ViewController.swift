@@ -14,8 +14,10 @@ class ViewController: UIViewController {
     private let objectVisualLookup = ObjectVisualLookup()
     private let photosButton = UIButton()
     private let maskButton = UIButton()
+    private let maskPersonButton = UIButton()
     private let visualLookup = UIButton()
-    private let images = ["cow", "elephant", "people", "coffee", "street", "wineglasses"];
+    private let images = ["cow", "elephant", "people", "coffee", "street", "wineglasses"]
+    private var downSampledOriginalImage : CGImage?
 }
 
 extension ViewController {
@@ -29,12 +31,18 @@ extension ViewController {
         photosButton.addTarget(self, action: #selector(photosButtonTapped), for: .touchUpInside)
         view.addSubview(photosButton)
         
-        maskButton.setTitle("Mask", for: .normal)
+        maskButton.setTitle("Mask all", for: .normal)
         maskButton.setImage(UIImage(systemName: "dot.square.fill"), for: .normal)
         maskButton.setTitleColor(.systemBlue, for: .normal)
         maskButton.addTarget(self, action: #selector(maskButtonTapped), for: .touchUpInside)
         maskButton.isEnabled = false
         view.addSubview(maskButton)
+        
+        maskPersonButton.setTitle("Mask people", for: .normal)
+        maskPersonButton.setImage(UIImage(systemName: "dot.square"), for: .normal)
+        maskPersonButton.setTitleColor(.systemBlue, for: .normal)
+        maskPersonButton.addTarget(self, action: #selector(maskPersonButtonTapped), for: .touchUpInside)
+        view.addSubview(maskPersonButton)
         
         visualLookup.setTitle("Lookup", for: .normal)
         visualLookup.setImage(UIImage(systemName: "info.circle"), for: .normal)
@@ -50,10 +58,10 @@ extension ViewController {
         imageView.addGestureRecognizer(tapGesture)
         view.addSubview(imageView)
         
-        
-        photosButton.translatesAutoresizingMaskIntoConstraints = false
         imageView.translatesAutoresizingMaskIntoConstraints = false
+        photosButton.translatesAutoresizingMaskIntoConstraints = false
         maskButton.translatesAutoresizingMaskIntoConstraints = false
+        maskPersonButton.translatesAutoresizingMaskIntoConstraints = false
         visualLookup.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             photosButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 10),
@@ -63,7 +71,10 @@ extension ViewController {
             maskButton.leadingAnchor.constraint(equalTo: photosButton.trailingAnchor, constant: 10),
             maskButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 40),
             maskButton.heightAnchor.constraint(equalToConstant: 40),
-            visualLookup.leadingAnchor.constraint(equalTo: maskButton.trailingAnchor, constant: 10),
+            maskPersonButton.leadingAnchor.constraint(equalTo: maskButton.trailingAnchor, constant: 10),
+            maskPersonButton.topAnchor.constraint(equalTo: view.topAnchor, constant: 40),
+            maskPersonButton.heightAnchor.constraint(equalToConstant: 40),
+            visualLookup.leadingAnchor.constraint(equalTo: maskPersonButton.trailingAnchor, constant: 10),
             visualLookup.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -10),
             visualLookup.topAnchor.constraint(equalTo: view.topAnchor, constant: 40),
             visualLookup.heightAnchor.constraint(equalToConstant: 40),
@@ -93,6 +104,12 @@ private extension ViewController {
         }
     }
     
+    private func getPeople() {
+        if let image = imageView.image {
+            objectRecognizer.recognizePeople(image.cgImage)
+        }
+    }
+    
     private func lookupObjects() {
         if let image = imageView.image {
             objectVisualLookup.analyze(image)
@@ -111,6 +128,10 @@ private extension ViewController {
         photosButton.isEnabled = false
         maskButton.isEnabled = false
         getObjects(at: nil)
+    }
+    
+    @objc private func maskPersonButtonTapped() {
+        getPeople()
     }
     
     @objc private func visualLookupButtonTapped() {
@@ -169,10 +190,17 @@ extension ViewController: PHPickerViewControllerDelegate {
             
             if result.itemProvider.canLoadObject(ofClass: UIImage.self) {
                 result.itemProvider.loadObject(ofClass: UIImage.self) { [self] image, error in
-                    DispatchQueue.main.async {
+                    DispatchQueue.main.async { [self] in
+                        let name = result.itemProvider.suggestedName ?? "tempImage"
                         let object = image as! UIImage
-                        self.imageView.image = object
-                        self.maskButton.isEnabled = true
+                        // Downsample the image to 150 as the maximum dimension for faster result
+                        guard let imageURL = createLocalURL(for: object, name: name),
+                              let dsImage = downsample(image: imageURL, to: CGSize(width: 150, height: 150)) else {
+                                  return
+                        }
+                        downSampledOriginalImage = dsImage
+                        imageView.image = UIImage(cgImage: downSampledOriginalImage!)
+                        maskButton.isEnabled = true
                     }
                 }
             }
@@ -182,6 +210,23 @@ extension ViewController: PHPickerViewControllerDelegate {
 
 extension ViewController: ObjectRecognizerDelegate {
     func objectRecognizer(_ recognizer: ObjectRecognizer, didRecognizedAndMaskedObjects image: CGImage) {
+        for x in 0..<image.width {
+            for y in 0..<image.height {
+                let pixelData = image.dataProvider!.data
+                let dataPtr = CFDataGetBytePtr(pixelData)
+                
+                let bytesPerRow = image.bytesPerRow
+                let bytesPerPixel = image.bitsPerPixel / 8
+                let pixelOffset = y * bytesPerRow + x * bytesPerPixel
+                let value = dataPtr![pixelOffset]
+//                print(value)
+                if (value != 0) {
+                    print("(", x, ",", y , ")")
+                }
+            }
+        }
+        print("END")
+        
         imageView.image = UIImage(cgImage: image)
         photosButton.isEnabled = true
         maskButton.isEnabled = true
@@ -197,5 +242,46 @@ extension ViewController: ObjectVisualLookupDelegate {
     
 }
 
+// MARK: Utilities
 
+extension ViewController {
+    
+    /* References
+     WWDC session - https://developer.apple.com/videos/play/wwdc2018/416/?time=1373
+     */
+    func downsample(image imageURL: URL,
+                    to size: CGSize,
+                    scale: CGFloat = UIScreen.main.scale) -> CGImage? {
+        guard let imageSource = CGImageSourceCreateWithURL(imageURL as CFURL, nil) else {
+            return nil
+        }
+        
+        let pixelDimension = max(size.width, size.height) * scale
+        let options: [NSString: Any] = [
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: pixelDimension
+        ]
+        
+        guard let downsampledImage = CGImageSourceCreateThumbnailAtIndex(imageSource, 0, options as CFDictionary) else {
+            return nil
+        }
+        
+        return downsampledImage
+    }
+    
+    func createLocalURL(for image: UIImage, name: String, imageExtension: String = "jpg") -> URL? {
+        guard let imageURL = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("\(name).\(imageExtension)") else {
+            return nil
+        }
+        let pngData = image.jpegData(compressionQuality: 1)
+        do {
+            try pngData?.write(to: imageURL);
+        } catch {
+            print(error)
+            return nil
+        }
+        return imageURL
+    }
+}
 

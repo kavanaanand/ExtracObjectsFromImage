@@ -20,14 +20,35 @@ class ObjectRecognizer: NSObject {
         super.init()
     }
     
-    func recognizeObjects(_ cgImage : CGImage?, at tapPosition: CGPoint?) {
+    func recognizePeople(_ cgImage: CGImage?) {
         guard cgImage != nil else {
             return
         }
         
-        // Saliency - auto crop
-        // Person segmentation - people
-        // Subject lifting API - class agnostic (any fg object regardless of semantic class)
+        let requestHandler = VNImageRequestHandler(cgImage: cgImage!)
+        
+        // Execute Vision request
+        let request = VNGeneratePersonSegmentationRequest { [self] request, error in
+            guard let result = request.results?.first as? VNPixelBufferObservation, error == nil else {
+                delegate?.objectRecognizerDidFailRecognizingObjects(self)
+                return
+            }
+            
+            let mask = CIImage(cvPixelBuffer: result.pixelBuffer)
+            processResult(mask: mask, toImage: cgImage!)
+        }
+        
+        do {
+            try requestHandler.perform([request])
+        } catch {
+            print(error)
+        }
+    }
+    
+    func recognizeObjects(_ cgImage: CGImage?, at tapPosition: CGPoint?) {
+        guard cgImage != nil else {
+            return
+        }
         
         let requestHandler = VNImageRequestHandler(cgImage: cgImage!)
         
@@ -52,7 +73,7 @@ class ObjectRecognizer: NSObject {
                     let bytesPerRow = CVPixelBufferGetBytesPerRow(mask)
                     let instanceLabel = pixels.load(fromByteOffset: Int(coords.y) * bytesPerRow + Int(coords.x), as: UInt8.self)
                     CVPixelBufferUnlockBaseAddress(mask, .readOnly)
-
+                    
                     instances = instanceLabel == 0 ? result.allInstances : [Int(instanceLabel)]
                 }
                 
@@ -60,27 +81,10 @@ class ObjectRecognizer: NSObject {
                 let output = try result.generateScaledMaskForImage(forInstances: instances, from: requestHandler)
                 let mask = CIImage(cvPixelBuffer: output)
                 processResult(mask: mask, toImage: cgImage!)
-                
-//                var index = result.allInstances.startIndex
-//                Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [self] timer in
-//                    guard index != result.allInstances.endIndex else {
-//                        timer.invalidate()
-//                        return
-//                    }
-//                    do {
-//                        let output = try result.generateScaledMaskForImage(forInstances: [result.allInstances[index]], from: requestHandler)
-//                        let mask = CIImage(cvPixelBuffer: output)
-//                        processResult(mask: mask, toImage: cgImage!)
-//                    } catch {
-//                        print(error)
-//                    }
-//                    index = result.allInstances.index(after: index)
-//                }
             } catch {
                 delegate?.objectRecognizerDidFailRecognizingObjects(self)
                 print(error)
             }
-            
         }
         
         do {
